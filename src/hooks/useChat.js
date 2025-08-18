@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import usePrompt from "./usePrompt.js";
+import saveConversation from "./useSave.js";
 import { gsap } from "gsap";
 
-const useChat = () => {
+const useChat = (initialMessages = [], activeConversation = null) => {
     const sendPrompt = usePrompt();
-    const [messages, setMessages] = useState([]);
+    const [messages, setMessages] = useState(initialMessages || []);
     const [loading, setLoading] = useState(false);
     const spinnerRef = useRef(null);
 
@@ -32,9 +33,30 @@ const useChat = () => {
             { role: "bot", text: botSentence },
         ]);
         setLoading(false);
+
+        // persist the conversation to the backend (non-blocking)
+        const savePayload = {
+            userPrompt: prompt,
+            botResponse: botSentence,
+        };
+
+        // if the active conversation was provided and has identifying info, include it
+        try {
+            if (activeConversation) {
+                if (activeConversation.title) savePayload.title = activeConversation.title;
+                if (activeConversation._id) savePayload.uniqueId = activeConversation._id;
+            }
+        } catch (e) {
+            // ignore
+        }
+
+        saveConversation(savePayload).catch((error) => {
+            // log but don't interrupt the user flow
+            console.error("Failed to save conversation:", error);
+        });
     };
 
-    return { messages, loading, spinnerRef, handleSend };
+    return { messages, loading, spinnerRef, handleSend, setMessages };
 };
 
 export default useChat;

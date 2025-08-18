@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import InputBar from "../components/InputBar.jsx";
 import useChat from "../hooks/useChat.js";
+import { useConversation } from "../context/ConversationContext.jsx";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -46,7 +47,32 @@ const CodeBlock = ({ node, inline, className, children, ...props }) => {
 };
 
 const Chat = () => {
-    const { messages, loading, spinnerRef, handleSend } = useChat();
+    const { currentConversation, clearConversation } = useConversation();
+    const mapConvToChat = (msgs) => {
+        if (!msgs || !Array.isArray(msgs)) return [];
+        // Each server message may contain both userPrompt and botResponse — expand into two messages
+        const out = [];
+        msgs.forEach((m) => {
+            if (m.userPrompt) out.push({ role: "user", text: m.userPrompt });
+            if (m.botResponse) out.push({ role: "bot", text: m.botResponse });
+            // also support alternate keys
+            if (!m.userPrompt && m.user) out.push({ role: "user", text: m.user });
+            if (!m.botResponse && m.bot) out.push({ role: "bot", text: m.bot });
+        });
+        return out;
+    };
+
+    const { messages, loading, spinnerRef, handleSend, setMessages } = useChat(
+        currentConversation?.messages ? mapConvToChat(currentConversation.messages) : [],
+        currentConversation || null
+    );
+
+    // when conversation changes, replace messages
+    React.useEffect(() => {
+        if (currentConversation?.messages) {
+            setMessages(mapConvToChat(currentConversation.messages));
+        }
+    }, [currentConversation]);
     const renderMessage = (msg, idx) => (
         <div
             key={idx}
@@ -68,8 +94,15 @@ const Chat = () => {
         </div>
     );
 
+    const handleBackgroundClick = (e) => {
+        // only treat direct clicks on the container (not on children)
+        if (e.target === e.currentTarget) {
+            clearConversation();
+        }
+    };
+
     return (
-        <div className="flex flex-col min-h-full dark:bg-dark-main-bg text-black dark:text-black p-4 ">
+        <div onClick={handleBackgroundClick} className="flex flex-col min-h-full dark:bg-dark-main-bg text-black dark:text-black p-4 ">
             <div className="flex flex-col max-w-6xl mx-auto flex-1 w-full ">
                 <div className="w-full mb-8 flex-1 overflow-y-auto pb-24  ">
                     {messages.map(renderMessage)}

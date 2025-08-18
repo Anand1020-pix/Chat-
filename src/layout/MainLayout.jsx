@@ -3,12 +3,14 @@ import { useRoutes } from "react-router-dom";
 import RouteConfig from "../routes/RouteConfig.jsx";
 import Sidebar from "../components/Sidebar.jsx";
 import TopBar from "../components/TopBar.jsx";
+import { ConversationProvider } from "../context/ConversationContext.jsx";
 
 const MainLayout = () => {
   const routes = useRoutes(RouteConfig);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
 
   return (
+    <ConversationProvider>
     <div className="flex h-screen overflow-hidden   dark:bg-dark-main-bg text-black dark:text-white">
       <div className="hidden md:flex flex-shrink-0">
         <Sidebar />
@@ -33,6 +35,7 @@ const MainLayout = () => {
         <Sidebar isMobile={true} closeSidebar={() => setSidebarOpen(false)} />
       </div>
     </div>
+    </ConversationProvider>
   );
 };
 
