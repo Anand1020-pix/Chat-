@@ -8,15 +8,20 @@ import { ConversationProvider } from "../context/ConversationContext.jsx";
 const MainLayout = () => {
   const routes = useRoutes(RouteConfig);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarExpanded, setSidebarExpanded] = useState(true);
 
   return (
     <ConversationProvider>
     <div className="flex h-screen overflow-hidden   dark:bg-dark-main-bg text-black dark:text-white">
       <div className="hidden md:flex flex-shrink-0">
-        <Sidebar />
+        <Sidebar expanded={sidebarExpanded} setExpanded={setSidebarExpanded} />
       </div>
       <div className="flex flex-col flex-1 overflow-hidden">
-        <TopBar toggleSidebar={() => setSidebarOpen(!isSidebarOpen)} />
+  <TopBar
+          toggleSidebar={() => setSidebarOpen(!isSidebarOpen)}
+          toggleExpand={() => setSidebarExpanded((s) => !s)}
+          sidebarExpanded={sidebarExpanded}
+        />
         <main className="flex-grow p-4 overflow-y-auto">{routes}</main>
       </div>
 
