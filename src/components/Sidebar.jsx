@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { fetchConversations, deleteConversation, updateConversation } from "../hooks/useSave.js";
+import { fetchConversations, deleteConversation, updateConversation, fetchConversationById } from "../hooks/useSave.js";
 import { useConversation } from "../context/ConversationContext.jsx";
 import { RiMenuFold2Fill, RiMenuFill, RiCloseLine } from "react-icons/ri";
-import { MdDelete , MdCancel} from "react-icons/md";
+import { MdDelete, MdCancel } from "react-icons/md";
 import { SiTheconversation } from "react-icons/si";
 
-import { FaEdit ,FaCheck , FaArrowRight } from "react-icons/fa";
+import { FaEdit, FaCheck, FaArrowRight } from "react-icons/fa";
 
 const Sidebar = ({ isMobile, closeSidebar, expanded: expandedProp, setExpanded: setExpandedProp }) => {
     const [internalExpanded, setInternalExpanded] = useState(true);
@@ -17,132 +17,328 @@ const Sidebar = ({ isMobile, closeSidebar, expanded: expandedProp, setExpanded: 
 
     const { openConversation, clearConversation } = useConversation();
 
+    const convUrl = import.meta.env.VITE_CONV || "/conv";
+
+    // Use the shared fetchConversationById from the hooks module (imported at top).
+
     useEffect(() => {
         let mounted = true;
-        fetchConversations("")
-            .then((data) => {
+        const saveUrl = import.meta.env.VITE_SAVE || "/save";
+
+        async function load() {
+            try {
+                // Always try to fetch fresh data from server first
+                const tryUrls = [convUrl, saveUrl];
+                let data = null;
+                for (const url of tryUrls) {
+                    try {
+                        const res = await fetch(url, { method: "GET", headers: { "Content-Type": "application/json" } });
+                        if (!res.ok) continue;
+                        data = await res.json().catch(() => null);
+                        if (data) break;
+                    } catch (e) {
+                        // try next
+                    }
+                }
+
+                // If fetch failed, fall back to localStorage stored data
+                if (!data) {
+                    try {
+                        const raw = localStorage.getItem('chat:conversations');
+                        if (raw) {
+                            const parsed = JSON.parse(raw || "[]");
+                            if (Array.isArray(parsed)) data = parsed;
+                        }
+                    } catch (e) {
+                        // ignore parse errors
+                    }
+                }
+
                 if (!mounted) return;
-                // Expecting array of convs or object; normalize
-                setConversations(Array.isArray(data) ? data : (data?.conversations || []));
-            })
-            .catch((err) => console.error("Failed to load conversations", err));
-        return () => (mounted = false);
+
+                const rawList = Array.isArray(data) ? data : (data?.conversations || []);
+
+                // Normalize server objects to internal shape
+                let list = rawList.map((item) => {
+                    const id = item._id || item.uniqueId || item.id;
+                    const title = item.title || item.name || "Untitled";
+                    const messages = Array.isArray(item.messages)
+                        ? item.messages
+                        : item.lastMessage
+                            ? [
+                                {
+                                    userPrompt: item.lastMessage.userPrompt || item.lastMessage.user,
+                                    botResponse: item.lastMessage.botResponse || item.lastMessage.bot,
+                                    timestamp: item.lastMessage.timestamp,
+                                },
+                            ]
+                            : [];
+                    return {
+                        _id: id,
+                        uniqueId: id,
+                        title,
+                        messages,
+                        createdAt: item.createdAt,
+                        updatedAt: item.updatedAt,
+                        messageCount: item.messageCount || (messages ? messages.length : 0),
+                        raw: item,
+                    };
+                });
+
+                // For any items where the server indicates more messages than provided, fetch full conversation
+                const needFull = list.filter((it) => it._id && typeof it.messageCount === 'number' && (Array.isArray(it.messages) ? it.messages.length : 0) < it.messageCount);
+                if (needFull.length > 0) {
+                    // fetch full conversations in parallel
+                    const fetched = await Promise.allSettled(needFull.map((it) => fetchConversationById(it._id)));
+                    fetched.forEach((r) => {
+                        if (r.status === 'fulfilled' && r.value) {
+                            const idx = list.findIndex((x) => x._id === r.value._id);
+                            if (idx >= 0) list[idx] = { ...list[idx], ...r.value };
+                            else list.unshift(r.value);
+                        }
+                    });
+                }
+
+                setConversations(list);
+                writeConversationsCookie(list);
+            } catch (err) {
+                console.error("Failed to load conversations", err);
+            }
+        }
+
+        // listen for global updates from saveConversation so the sidebar can stay in sync
+        const onUpdated = (e) => {
+            try {
+                const payload = e?.detail;
+                if (!payload) return;
+                // payload may be an array or single object
+                const incoming = Array.isArray(payload) ? payload : [payload];
+                const normalized = incoming.map((item) => {
+                    const id = item._id || item.uniqueId || item.id;
+                    const title = item.title || item.name || "Untitled";
+                    const messages = Array.isArray(item.messages)
+                        ? item.messages
+                        : item.lastMessage
+                            ? [
+                                {
+                                    userPrompt: item.lastMessage.userPrompt || item.lastMessage.user,
+                                    botResponse: item.lastMessage.botResponse || item.lastMessage.bot,
+                                    timestamp: item.lastMessage.timestamp,
+                                },
+                            ]
+                            : [];
+                    return {
+                        _id: id,
+                        uniqueId: id,
+                        title,
+                        messages,
+                        createdAt: item.createdAt,
+                        updatedAt: item.updatedAt,
+                        messageCount: item.messageCount || (messages ? messages.length : 0),
+                        raw: item,
+                    };
+                });
+
+                setConversations((prev) => {
+                    const copy = Array.isArray(prev) ? [...prev] : [];
+                    normalized.forEach((inc) => {
+                        const idx = inc._id ? copy.findIndex((c) => c && c._id === inc._id) : -1;
+                        if (idx >= 0) copy[idx] = { ...copy[idx], ...inc };
+                        else copy.unshift(inc);
+                    });
+                    writeConversationsCookie(copy);
+                    return copy;
+                });
+            } catch (err) {
+                // ignore
+            }
+        };
+
+        load();
+        window.addEventListener("conversations:updated", onUpdated);
+        return () => {
+            mounted = false;
+            window.removeEventListener("conversations:updated", onUpdated);
+        };
     }, []);
+    
+
+    // helper to persist conversations in localStorage
+    function writeConversationsCookie(list) {
+        try {
+            const serialized = JSON.stringify(list || []);
+            localStorage.setItem('chat:conversations', serialized);
+        } catch (e) {
+            // ignore
+        }
+    }
+
+    // Precompute title frequencies so we can disambiguate duplicate titles in the UI
+    const titleList = conversations.map((c, i) => c.title || c.name || `Conversation ${i + 1}`);
+    const titleCounts = titleList.reduce((acc, t) => {
+        acc[t] = (acc[t] || 0) + 1;
+        return acc;
+    }, {});
 
     return (
         <>
-        <div className={`h-full bg-gray-800 text-white flex flex-col shadow-lg transition-all duration-300 ${expanded ? "w-64" : "hidden"}`}>
-            <div className="flex items-center justify-between p-4 border-b border-gray-700 font-bold text-lg">
-                <span>{expanded ? "LOGO" : ""}</span>
-                <div className="flex items-center">
-                    {isMobile && (
-                        <button
-                            className="text-gray-400 hover:text-white focus:outline-none mr-4"
-                            onClick={closeSidebar}
-                        >
-                            <RiCloseLine size={24} />
-                        </button>
-                    )}
-                    <button
-                        className="hidden md:inline-flex text-gray-400 hover:text-white focus:outline-none"
-                        onClick={() => setExpanded((prev) => !prev)}
-                        title={expanded ? "Shrink sidebar" : "Expand sidebar"}
-                    >
-                        {expanded ? (
-                            <RiMenuFill />
-                        ) : (
-                            <RiMenuFold2Fill />
+            <div className={`h-full bg-gray-800 text-white flex flex-col shadow-lg transition-all duration-300 ${expanded ? "w-64" : "hidden"}`}>
+                <div className="flex items-center justify-between p-4 border-b border-gray-700 font-bold text-lg">
+                    <span>{expanded ? "LOGO" : ""}</span>
+                    <div className="flex items-center">
+                        {isMobile && (
+                            <button
+                                className="text-gray-400 hover:text-white focus:outline-none mr-4"
+                                onClick={closeSidebar}
+                            >
+                                <RiCloseLine size={24} />
+                            </button>
                         )}
-                    </button>
-                </div>
-            </div>
-            {expanded && (
-                <div className="flex-1 overflow-y-auto p-4">
-                    <div className="mb-4 flex items-center justify-between hover:bg-gray-700 transition rounded px-2 py-2">
-                        <SiTheconversation className="text-xl mr-3" />
                         <button
-                            className="flex-1 text-left px-3 py-2 rounded text-xl font-bold hover:bg-gray-700 focus:outline-none"
-                            onClick={() => { clearConversation(); if (isMobile && closeSidebar) closeSidebar(); }}
+                            className="hidden md:inline-flex text-gray-400 hover:text-white focus:outline-none"
+                            onClick={() => setExpanded((prev) => !prev)}
+                            title={expanded ? "Shrink sidebar" : "Expand sidebar"}
                         >
-                            New Chat
+                            {expanded ? (
+                                <RiMenuFill />
+                            ) : (
+                                <RiMenuFold2Fill />
+                            )}
                         </button>
-                        <FaArrowRight className="ml-3" />
                     </div>
+                </div>
+                {expanded && (
+                    <div className="flex-1 overflow-y-auto p-4">
+                        <div className="mb-4 flex items-center justify-between hover:bg-gray-700 transition rounded px-2 py-2">
+                            <SiTheconversation className="text-xl mr-3" />
+                            <button
+                                className="flex-1 text-left px-3 py-2 rounded text-xl font-bold hover:bg-gray-700 focus:outline-none"
+                                onClick={() => { clearConversation(); if (isMobile && closeSidebar) closeSidebar(); }}
+                            >
+                                New Chat
+                            </button>
+                            <FaArrowRight className="ml-3" />
+                        </div>
                         <div className="space-y-2">
                             {conversations.length === 0 && (
                                 <div className="text-sm text-gray-400">No conversations found</div>
                             )}
-                {conversations.map((conv, idx) => {
+                            {conversations.map((conv, idx) => {
                                 const title = conv.title || conv.name || `Conversation ${idx + 1}`;
-                                const isEditing = editing === title;
+                                const convKey = conv._id || `conv-${idx}-${title}`;
+                                const isEditing = editing === convKey;
                                 return (
-                    <div key={title} className="flex items-center justify-between px-2 py-1 rounded hover:bg-gray-700 cursor-pointer"
-                     onClick={() => { openConversation(conv); if (isMobile && closeSidebar) closeSidebar(); }}>
-                                        <div className="flex-1 text-sm truncate">
-                                            {isEditing ? (
-                                                <input
-                                                    value={editValue}
-                                                    onChange={(e) => setEditValue(e.target.value)}
-                                                    className="w-full bg-gray-800 text-white text-sm px-2 py-1 rounded"
-                                                />
-                                            ) : (
-                        <span title={title} className="" >{title}</span>
-                                            )}
-                                        </div>
-                                        <div className="ml-2 flex items-center space-x-1">
-                                            {isEditing ? (
-                                                <>
-                                                    <button
-                                                        className=""
-                                                        onClick={async () => {
-                                                            try {
-                                                                await updateConversation(title, editValue);
-                                                                setConversations((prev) => prev.map(c => 
-                                                                    ({...c, title: c.title === title ? editValue : c.title})));
-                                                                setEditing(null);
-                                                            } catch (err) {
-                                                                console.error(err);
-                                                            }
-                                                        }}
-                                                    >
-                                                        <FaCheck />
-                                                    </button>
-                                                    <button onClick={() => setEditing(null)}><MdCancel /></button>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <button  onClick={() => { setEditing(title); setEditValue(title); }}><FaEdit /></button>
-                                                    <button  onClick={async () => {
-                                                        try {
-                                                            await deleteConversation(title);
-                                                            setConversations((prev) => prev.filter(c => c.title !== title));
-                                                        } catch (err) {
-                                                            console.error(err);
-                                                        }
-                                                    }}><MdDelete /></button>
-                                                </>
-                                            )}
-                                        </div>
+                                    <div
+                                        key={convKey}
+                                        className="flex items-center justify-between px-2 py-1 rounded hover:bg-gray-700 cursor-pointer"
+                                        onClick={async () => {
+                                            try {
+                                                // If the conversation has fewer messages than the server-side count, fetch full conversation
+                                                                                const hasCount = typeof conv.messageCount === 'number' && conv.messageCount > 0;
+                                                                                const localMessages = Array.isArray(conv.messages) ? conv.messages.length : 0;
+                                                                                const convId = conv._id || conv.uniqueId || conv.id;
+                                                                                if (convId && hasCount && localMessages < conv.messageCount) {
+                                                                                    const full = await fetchConversationById(convId);
+                                                    if (full) {
+                                                        // upsert into local list
+                                                        setConversations((prev) => {
+                                                            const copy = [...prev];
+                                                                                            const idx = full._id ? copy.findIndex((c) => c && c._id === full._id) : copy.findIndex((c) => (c && (c.uniqueId === full.uniqueId || c.id === full.id)));
+                                                                                            if (idx >= 0) copy[idx] = { ...copy[idx], ...full };
+                                                                                            else copy.unshift(full);
+                                                            writeConversationsCookie(copy);
+                                                            return copy;
+                                                        });
+                                                        openConversation(full);
+                                                        if (isMobile && closeSidebar) closeSidebar();
+                                                        return;
+                                                    }
+                                                }
+                                            } catch (err) {
+                                                // ignore fetch errors and fall back to opening the provided conv
+                                            }
+                                            openConversation(conv);
+                                            if (isMobile && closeSidebar) closeSidebar();
+                                        }}
+                                    >
+                                        {expanded ? (
+                                            <>
+                                                <div className="flex-1 text-sm truncate">
+                                                    {isEditing ? (
+                                                        <input
+                                                            value={editValue}
+                                                            onChange={(e) => setEditValue(e.target.value)}
+                                                            className="w-full bg-gray-800 text-white text-sm px-2 py-1 rounded"
+                                                        />
+                                                    ) : (
+                                                        <div className="flex items-center">
+                                                            <span title={title} className="">{title}</span>
+                                                            {titleCounts[title] > 1 && (
+                                                                <span className="ml-2 text-xs text-gray-400">#{conv._id ? String(conv._id).slice(0,6) : idx + 1}</span>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="ml-2 flex items-center space-x-1">
+                                                    {isEditing ? (
+                                                        <>
+                                                            <button
+                                                                    onClick={async (ev) => {
+                                                                        ev.stopPropagation();
+                                                                        try {
+                                                                            // Prefer to update by _id when available to avoid ambiguity with duplicate titles
+                                                                            await updateConversation(conv._id || title, editValue);
+                                                                            const newList = (() => {
+                                                                                const copy = [...conversations];
+                                                                                copy[idx] = { ...copy[idx], title: editValue };
+                                                                                return copy;
+                                                                            })();
+                                                                            setConversations(newList);
+                                                                            writeConversationsCookie(newList);
+                                                                            setEditing(null);
+                                                                        } catch (err) {
+                                                                            console.error(err);
+                                                                        }
+                                                                    }}
+                                                            >
+                                                                <FaCheck />
+                                                            </button>
+                                                            <button onClick={(ev) => { ev.stopPropagation(); setEditing(null); }}><MdCancel /></button>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <button onClick={(ev) => { ev.stopPropagation(); setEditing(convKey); setEditValue(title); }}><FaEdit /></button>
+                                                            <button onClick={async (ev) => { ev.stopPropagation(); try { await deleteConversation(conv._id || title); const newList = conversations.filter((_, i) => i !== idx); setConversations(newList); writeConversationsCookie(newList); } catch (err) { console.error(err); } }}><MdDelete /></button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </>
+                                        ) : (
+                                            // collapsed view (shouldn't be reached when hidden)
+                                            <div className="flex items-center">
+                                                <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-sm font-semibold">{String(idx + 1)}</div>
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })}
                         </div>
+                    </div>
+                )}
+                <div className="p-4 border-t border-gray-700 text-xs text-gray-400">
+                    {expanded ? "" : ""}
                 </div>
-            )}
-            <div className="p-4 border-t border-gray-700 text-xs text-gray-400">
-                {expanded ? "" : ""}
             </div>
-        </div>
 
-        {!expanded && (
-            <button
-                onClick={() => setExpanded(true)}
-                aria-label="Open sidebar"
-                className="fixed left-3 top-4 z-50 bg-gray-800 text-white p-2 rounded-md shadow-lg hover:bg-gray-700 focus:outline-none"
-            >
-                <RiMenuFill />
-            </button>
-        )}
+            {!expanded && (
+                <button
+                    onClick={() => setExpanded(true)}
+                    aria-label="Open sidebar"
+                    className="fixed left-3 top-4 z-50 bg-gray-800 text-white p-2 rounded-md shadow-lg hover:bg-gray-700 focus:outline-none"
+                >
+                    <RiMenuFill />
+                </button>
+            )}
         </>
     );
 }

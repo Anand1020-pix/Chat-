@@ -40,8 +40,12 @@ const useChat = (initialMessages = [], activeConversation = null) => {
             botResponse: botSentence,
         };
 
-        // if the active conversation was provided and has identifying info, include it
+        let forceNew = false;
         try {
+            // If no activeConversation provided, or it's an intentionally blank/new conv (no title/_id and empty messages), force new
+            if (!activeConversation) forceNew = true;
+            else if (!activeConversation._id && !(activeConversation.title) && Array.isArray(activeConversation.messages) && activeConversation.messages.length === 0) forceNew = true;
+
             if (activeConversation) {
                 if (activeConversation.title) savePayload.title = activeConversation.title;
                 if (activeConversation._id) savePayload.uniqueId = activeConversation._id;
@@ -50,7 +54,7 @@ const useChat = (initialMessages = [], activeConversation = null) => {
             // ignore
         }
 
-        saveConversation(savePayload).catch((error) => {
+        saveConversation({ ...savePayload, forceNew }).catch((error) => {
             // log but don't interrupt the user flow
             console.error("Failed to save conversation:", error);
         });
