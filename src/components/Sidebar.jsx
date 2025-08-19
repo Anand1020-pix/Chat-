@@ -14,6 +14,15 @@ const Sidebar = ({ isMobile, closeSidebar, expanded: expandedProp, setExpanded: 
     const setExpanded = setExpandedProp || setInternalExpanded;
     const [hoverRef, isHovering] = useHover();
     const effectiveExpanded = expanded || isHovering;
+
+    // Broadcast the effective expanded state so other components (TopBar) can react
+    useEffect(() => {
+        try {
+            window.dispatchEvent(new CustomEvent('sidebar:effectiveExpanded', { detail: effectiveExpanded }));
+        } catch (e) {
+            // ignore if CustomEvent not supported
+        }
+    }, [effectiveExpanded]);
     const [conversations, setConversations] = useState([]);
     const [editing, setEditing] = useState(null);
     const [editValue, setEditValue] = useState("");
@@ -185,10 +194,10 @@ const Sidebar = ({ isMobile, closeSidebar, expanded: expandedProp, setExpanded: 
 
     return (
         <>
-            <div ref={hoverRef} className={`h-full bg-gray-800 text-white flex flex-col shadow-lg transition-all duration-300 ${effectiveExpanded ? "w-64 opacity-100 relative" : 
+            <div ref={hoverRef} className={`h-full bg-gray-800 text-white flex flex-col shadow-lg transition-all duration-300 ${effectiveExpanded ? "w-64 opacity-100 relative " : 
                 overlayWhenCollapsed ? "w-50 overflow-hidden opacity-0 fixed left-0 top-0 h-full z-40" : "w-3 overflow-hidden opacity-0"}`}>
-                <div className="flex items-center justify-between p-4 border-b border-gray-700 font-bold text-lg">
-                    <span>{expanded ? "LOGO" : ""}</span>
+                <div className="flex items-center justify-between p-4  font-bold text-lg">
+                    <h1 className="text-xl font-bold">Chat</h1>
                     <div className="flex items-center">
                         {isMobile && (
                             <button
@@ -321,16 +330,6 @@ const Sidebar = ({ isMobile, closeSidebar, expanded: expandedProp, setExpanded: 
             {expanded ? "" : ""}
                 </div>
             </div>
-
-        {!effectiveExpanded && (
-                <button
-                    onClick={() => setExpanded(true)}
-                    aria-label="Open sidebar"
-                    className="hidden left-3 top-4 z-50 bg-gray-800 text-white p-2 rounded-md shadow-lg hover:bg-gray-700 focus:outline-none"
-                >
-                    <RiMenuFill />
-                </button>
-            )}
         </>
     );
 }

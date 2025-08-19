@@ -21,7 +21,7 @@ const CodeBlock = ({ node, inline, className, children, ...props }) => {
 
     return !inline && match ? (
         <div className="relative bg-black rounded-md my-2">
-            <div className="flex items-center justify-between px-4 py-1 bg-gray-700 rounded-t-md">
+            <div className="flex items-center justify-between px-4 py-1 bg-gray-900 rounded-t-md">
                 <span className="text-xs text-gray-400">{match[1]}</span>
                 <button
                     onClick={handleCopy}
@@ -76,7 +76,7 @@ const Chat = () => {
     const renderMessage = (msg, idx) => (
         <div
             key={idx}
-            className={`   ${msg.role === "bot" ? "text-left shadow-lg rounded-lg p-2 border-t-2 border-gray-100  rounded-r-lg" : 
+            className={`   ${msg.role === "bot" ? "text-left shadow-lg rounded-lg p-2 bg-gray-300  rounded-r-lg" : 
             " m-1 text-right "}`}
         >
             {msg.role === "bot" ? (
@@ -87,7 +87,7 @@ const Chat = () => {
                     {msg.text}
                 </ReactMarkdown>
             ) : (
-                <p className="inline-block bg-cyan-950 font-medium text-white  rounded px-2 py-1 rounded-l-lg">
+                <p className="inline-block bg-amber-50 text-black  rounded px-2 py-1 rounded-l-lg">
                     {msg.text}
                 </p>
             )}
@@ -104,20 +104,12 @@ const Chat = () => {
     return (
         <div onClick={handleBackgroundClick} className="flex flex-col min-h-full dark:bg-dark-main-bg text-black dark:text-black p-4 ">
             <div className="flex flex-col max-w-6xl mx-auto flex-1 w-full ">
-                <div className="w-full mb-8 flex-1 overflow-y-auto pb-24  ">
+                <div className="w-full mb-8 flex-1 overflow-y-auto pb-24 scrollbar-custom">
                     {messages.map(renderMessage)}
                 </div>
               
-                <div className=" fixed bottom-0 left-0 right-0 w-full max-w-xl mx-auto flex items-center flex-col p-4">
-                    <div className="m-2">
-                     {loading && (
-                    <div
-                        ref={spinnerRef}
-                        className="ml-4 w-8 h-8 border-4 border-gray-300 border-t-blue-500 rounded-full animate-spin"
-                    />
-                )}
-                </div>
-                <InputBar onSend={handleSend} disabled={loading} />
+                <div className=" fixed bottom-8 left-0 right-0 w-full max-w-xl mx-auto flex items-center flex-col p-4">
+                    <InputBar onSend={handleSend} disabled={loading} loading={loading} />
                  
             </div>
                 

@@ -1,1 +1,37 @@
 @import "tailwindcss";
+
+/* Custom scrollbar utility available as the Tailwind class `scrollbar-custom` */
+@layer utilities {
+	.scrollbar-custom {
+		/* Firefox */
+		scrollbar-width: thin;
+		scrollbar-color: #333c4b transparent;
+	}
+	.scrollbar-custom::-webkit-scrollbar {
+		width: 10px;
+	}
+	.scrollbar-custom::-webkit-scrollbar-track {
+		background: transparent;
+	}
+	.scrollbar-custom::-webkit-scrollbar-thumb {
+		background-color: #333c4b;
+		border-radius: 9999px;
+		border: 2px solid transparent; /* provides padding effect */
+		background-clip: padding-box;
+	}
+	.scrollbar-custom:hover::-webkit-scrollbar-thumb {
+		background-color: #2a3140;
+	}
+
+	@media (prefers-color-scheme: dark) {
+		.scrollbar-custom::-webkit-scrollbar-thumb {
+			background-color: #333c4b;
+		}
+		.scrollbar-custom:hover::-webkit-scrollbar-thumb {
+			background-color: #2a3140;
+		}
+		.scrollbar-custom {
+			scrollbar-color: #333c4b transparent;
+		}
+	}
+}

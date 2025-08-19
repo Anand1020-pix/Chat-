@@ -8,11 +8,11 @@ import { ConversationProvider } from "../context/ConversationContext.jsx";
 const MainLayout = () => {
   const routes = useRoutes(RouteConfig);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarExpanded, setSidebarExpanded] = useState(true);
+  const [sidebarExpanded, setSidebarExpanded] = useState(false);
 
   return (
     <ConversationProvider>
-    <div className="flex h-screen overflow-hidden   dark:bg-dark-main-bg text-black dark:text-white">
+    <div className="flex h-screen overflow-hidden  bg-gray-900 dark:bg-dark-main-bg text-black dark:text-white">
       <div className="hidden md:block">
         <Sidebar expanded={sidebarExpanded} setExpanded={setSidebarExpanded} overlayWhenCollapsed={true} />
       </div>
