@@ -13,8 +13,8 @@ const MainLayout = () => {
   return (
     <ConversationProvider>
     <div className="flex h-screen overflow-hidden   dark:bg-dark-main-bg text-black dark:text-white">
-      <div className="hidden md:flex flex-shrink-0">
-        <Sidebar expanded={sidebarExpanded} setExpanded={setSidebarExpanded} />
+      <div className="hidden md:block">
+        <Sidebar expanded={sidebarExpanded} setExpanded={setSidebarExpanded} overlayWhenCollapsed={true} />
       </div>
       <div className="flex flex-col flex-1 overflow-hidden">
   <TopBar

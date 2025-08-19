@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import InputBar from "../components/InputBar.jsx";
 import useChat from "../hooks/useChat.js";
 import { useConversation } from "../context/ConversationContext.jsx";
-import { fetchConversationById } from "../hooks/useSave.js";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -48,7 +47,7 @@ const CodeBlock = ({ node, inline, className, children, ...props }) => {
 };
 
 const Chat = () => {
-    const { currentConversation, clearConversation, openConversation } = useConversation();
+    const { currentConversation, clearConversation } = useConversation();
     const mapConvToChat = (msgs) => {
         if (!msgs || !Array.isArray(msgs)) return [];
         // Each server message may contain both userPrompt and botResponse — expand into two messages
@@ -68,38 +67,11 @@ const Chat = () => {
         currentConversation || null
     );
 
-    // when conversation changes, replace messages; fetch full conversation if server indicates more messages
+    // when conversation changes, replace messages
     React.useEffect(() => {
-        let mounted = true;
-
-        const localMessagesCount = Array.isArray(currentConversation?.messages) ? currentConversation.messages.length : 0;
-        const serverCount = typeof currentConversation?.messageCount === 'number' ? currentConversation.messageCount : null;
-
-        (async () => {
-            try {
-                const convId = currentConversation?._id || currentConversation?.uniqueId || currentConversation?.id;
-                if (convId && serverCount !== null && localMessagesCount < serverCount) {
-                    const full = await fetchConversationById(convId);
-                    if (!mounted) return;
-                    if (full && Array.isArray(full.messages) && full.messages.length > 0) {
-                        try { openConversation(full); } catch (e) { /* ignore */ }
-                        setMessages(mapConvToChat(full.messages));
-                        return;
-                    }
-                }
-
-                if (Array.isArray(currentConversation?.messages) && currentConversation.messages.length > 0) {
-                    setMessages(mapConvToChat(currentConversation.messages));
-                    return;
-                }
-            } catch (e) {
-                // ignore
-            }
-
-            if (mounted) setMessages([]);
-        })();
-
-        return () => (mounted = false);
+        if (currentConversation?.messages) {
+            setMessages(mapConvToChat(currentConversation.messages));
+        }
     }, [currentConversation]);
     const renderMessage = (msg, idx) => (
         <div

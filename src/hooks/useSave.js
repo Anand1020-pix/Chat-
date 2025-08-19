@@ -163,6 +163,29 @@ export async function fetchConversationById(id) {
             // try next
         }
     }
+    // If GET didn't return a full conversation, try POST variants to conv_url and save_url
+    if (!data) {
+        const postTargets = [conv_url];
+        if (typeof save_url !== 'undefined' && save_url) postTargets.push(save_url);
+        const postBodies = [
+            { id },
+            { uniqueId: id },
+            { conversationId: id },
+        ];
+        for (const target of postTargets) {
+            for (const body of postBodies) {
+                try {
+                    const res = await fetch(target, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+                    if (!res.ok) continue;
+                    data = await res.json().catch(() => null);
+                    if (data) break;
+                } catch (e) {
+                    // try next
+                }
+            }
+            if (data) break;
+        }
+    }
     if (!data) return null;
     const item = Array.isArray(data) ? data[0] : data;
     const idv = item._id || item.uniqueId || item.id;

@@ -1,5 +1,5 @@
 import React from "react";
-import { RiMenuFill } from "react-icons/ri";
+import { RiMenuFill, RiMenuFold2Fill } from "react-icons/ri";
 
 const TopBar = ({ toggleSidebar, toggleExpand, sidebarExpanded }) => {
     return (
@@ -11,17 +11,6 @@ const TopBar = ({ toggleSidebar, toggleExpand, sidebarExpanded }) => {
                 >
                     <RiMenuFill />
                 </button>
-
-                {/* Show expand control in topbar on md+ only when sidebar is collapsed */}
-                {!sidebarExpanded && (
-                    <button
-                        className="hidden md:inline text-2xl mr-3"
-                        onClick={toggleExpand}
-                        aria-label="Expand sidebar"
-                    >
-                        <RiMenuFill />
-                    </button>
-                )}
 
                 <h1 className="text-xl font-bold">Chat</h1>
             </div>
