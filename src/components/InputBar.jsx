@@ -100,7 +100,7 @@ const InputBar = ({ onSend, disabled, loading = false }) => {
             </div>
             <button
                 type="button"
-                className="absolute right-8 bottom-8 p-2  bg-[#282c32] text-white rounded-md shadow 
+                className="absolute right-8 bottom-9 p-2  bg-[#282c32] text-white rounded-md shadow 
                  transition disabled:opacity-50 flex items-center justify-center"
                 onClick={handleSend}
                 disabled={disabled || !input.trim()}

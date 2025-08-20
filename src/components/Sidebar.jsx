@@ -14,15 +14,6 @@ const Sidebar = ({ isMobile, closeSidebar, expanded: expandedProp, setExpanded: 
     const setExpanded = setExpandedProp || setInternalExpanded;
     const [hoverRef, isHovering] = useHover();
     const effectiveExpanded = expanded || isHovering;
-
-    // Broadcast the effective expanded state so other components (TopBar) can react
-    useEffect(() => {
-        try {
-            window.dispatchEvent(new CustomEvent('sidebar:effectiveExpanded', { detail: effectiveExpanded }));
-        } catch (e) {
-            // ignore if CustomEvent not supported
-        }
-    }, [effectiveExpanded]);
     const [conversations, setConversations] = useState([]);
     const [editing, setEditing] = useState(null);
     const [editValue, setEditValue] = useState("");
@@ -194,10 +185,10 @@ const Sidebar = ({ isMobile, closeSidebar, expanded: expandedProp, setExpanded: 
 
     return (
         <>
-            <div ref={hoverRef} className={`h-full bg-gray-800 text-white flex flex-col shadow-lg transition-all duration-300 ${effectiveExpanded ? "w-64 opacity-100 relative " : 
+            <div ref={hoverRef} className={`h-full bg-gray-800 text-white flex flex-col shadow-lg transition-all duration-300 ${effectiveExpanded ? "w-64 opacity-100 relative" : 
                 overlayWhenCollapsed ? "w-50 overflow-hidden opacity-0 fixed left-0 top-0 h-full z-40" : "w-3 overflow-hidden opacity-0"}`}>
-                <div className="flex items-center justify-between p-4  font-bold text-lg">
-                    <h1 className="text-xl font-bold">Chat</h1>
+                <div className="flex items-center justify-between p-4 border-b border-gray-700 font-bold text-lg">
+                    <span>{expanded ? "LOGO" : ""}</span>
                     <div className="flex items-center">
                         {isMobile && (
                             <button
@@ -310,7 +301,21 @@ const Sidebar = ({ isMobile, closeSidebar, expanded: expandedProp, setExpanded: 
                                                     ) : (
                                                         <>
                                                             <button onClick={(ev) => { ev.stopPropagation(); setEditing(convKey); setEditValue(title); }}><FaEdit /></button>
-                                                            <button onClick={async (ev) => { ev.stopPropagation(); try { await deleteConversation(conv._id || title); const newList = conversations.filter((_, i) => i !== idx); setConversations(newList); writeConversationsCookie(newList); } catch (err) { console.error(err); } }}><MdDelete /></button>
+                                                            <button onClick={(ev) => {
+                                                                ev.stopPropagation();
+                                                                // Optimistically remove from UI and localStorage immediately
+                                                                const newList = conversations.filter((_, i) => i !== idx);
+                                                                setConversations(newList);
+                                                                writeConversationsCookie(newList);
+                                                                // Attempt server delete in background; log errors but don't block local removal
+                                                                (async () => {
+                                                                    try {
+                                                                        await deleteConversation(conv._id || title);
+                                                                    } catch (err) {
+                                                                        console.error('Failed to delete conversation on server, removed locally', err);
+                                                                    }
+                                                                })();
+                                                            }}><MdDelete /></button>
                                                         </>
                                                     )}
                                                 </div>

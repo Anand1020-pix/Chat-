@@ -3,6 +3,8 @@ import usePrompt from "./usePrompt.js";
 import saveConversation from "./useSave.js";
 import { gsap } from "gsap";
 
+
+
 const useChat = (initialMessages = [], activeConversation = null) => {
     const sendPrompt = usePrompt();
     const [messages, setMessages] = useState(initialMessages || []);
