@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { RiMenuFill, RiMenuFold2Fill } from "react-icons/ri";
+import Title from "./Title";
 
 const TopBar = ({ toggleSidebar, toggleExpand, sidebarExpanded }) => {
     const [sidebarVisuallyExpanded, setSidebarVisuallyExpanded] = useState(false);
@@ -25,7 +26,7 @@ const TopBar = ({ toggleSidebar, toggleExpand, sidebarExpanded }) => {
                 </button>
                 {/* Show title only when sidebar is NOT expanded (including hover-expanded) */}
                 {!hideTitle && (
-                    <h1 className="text-xl font-bold">Chat</h1>
+                    <Title />
                 )}
             </div>
         </div>

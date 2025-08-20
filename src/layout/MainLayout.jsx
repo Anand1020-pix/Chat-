@@ -58,7 +58,7 @@ const MainLayout = () => {
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <Sidebar isMobile={true} closeSidebar={() => setSidebarOpen(false)} />
+  <Sidebar isMobile={true} closeSidebar={() => setSidebarOpen(false)} isMobileOpen={isSidebarOpen} />
       </div>
     </div>
     </ConversationProvider>

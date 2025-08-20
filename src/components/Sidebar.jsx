@@ -5,15 +5,16 @@ import { useConversation } from "../context/ConversationContext.jsx";
 import {  RiMenuFill, RiCloseLine } from "react-icons/ri";
 import { MdDelete, MdCancel } from "react-icons/md";
 import { SiTheconversation } from "react-icons/si";
+import Title from "./Title";
 
 import { FaEdit, FaCheck, FaArrowRight } from "react-icons/fa";
 
-const Sidebar = ({ isMobile, closeSidebar, expanded: expandedProp, setExpanded: setExpandedProp, overlayWhenCollapsed }) => {
+const Sidebar = ({ isMobile, closeSidebar, expanded: expandedProp, setExpanded: setExpandedProp, overlayWhenCollapsed, isMobileOpen = false }) => {
     const [internalExpanded, setInternalExpanded] = useState(true);
     const expanded = typeof expandedProp === "boolean" ? expandedProp : internalExpanded;
     const setExpanded = setExpandedProp || setInternalExpanded;
     const [hoverRef, isHovering] = useHover();
-    const effectiveExpanded = expanded || isHovering;
+    const effectiveExpanded = expanded || isHovering || (isMobile && isMobileOpen);
     const [conversations, setConversations] = useState([]);
     const [editing, setEditing] = useState(null);
     const [editValue, setEditValue] = useState("");
@@ -176,6 +177,17 @@ const Sidebar = ({ isMobile, closeSidebar, expanded: expandedProp, setExpanded: 
         }
     }
 
+    // Notify other UI (TopBar) about visual/hover expansion so it can hide/show its title
+    useEffect(() => {
+        try {
+            if (typeof window !== "undefined" && window.dispatchEvent) {
+                window.dispatchEvent(new CustomEvent('sidebar:effectiveExpanded', { detail: effectiveExpanded }));
+            }
+        } catch (e) {
+            // ignore
+        }
+    }, [effectiveExpanded]);
+
     // Precompute title frequencies so we can disambiguate duplicate titles in the UI
     const titleList = conversations.map((c, i) => c.title || c.name || `Conversation ${i + 1}`);
     const titleCounts = titleList.reduce((acc, t) => {
@@ -187,8 +199,8 @@ const Sidebar = ({ isMobile, closeSidebar, expanded: expandedProp, setExpanded: 
         <>
             <div ref={hoverRef} className={`h-full bg-gray-800 text-white flex flex-col shadow-lg transition-all duration-300 ${effectiveExpanded ? "w-64 opacity-100 relative" : 
                 overlayWhenCollapsed ? "w-50 overflow-hidden opacity-0 fixed left-0 top-0 h-full z-40" : "w-3 overflow-hidden opacity-0"}`}>
-                <div className="flex items-center justify-between p-4 border-b border-gray-700 font-bold text-lg">
-                    <span>{expanded ? "LOGO" : ""}</span>
+                <div className="flex items-center justify-between p-4  font-bold text-lg">
+                    <span>{effectiveExpanded ? <Title /> : ""}</span>
                     <div className="flex items-center">
                         {isMobile && (
                             <button
@@ -202,7 +214,7 @@ const Sidebar = ({ isMobile, closeSidebar, expanded: expandedProp, setExpanded: 
                 </div>
                 {effectiveExpanded && (
                     <div className="flex-1 overflow-y-auto p-4">
-                        <div className="mb-4 flex items-center justify-between hover:bg-gray-700 transition rounded px-2 py-2">
+                        <div className="mb-4 flex items-center justify-between hover:bg-gray-700 transition  px-2 py-2  border-r-8 border-l-4 border-t-2  border-b-2 border-gray-700">
                             <SiTheconversation className="text-xl mr-3" />
                             <button
                                 className="flex-1 text-left px-3 py-2 rounded text-xl font-bold hover:bg-gray-700 focus:outline-none"
@@ -331,7 +343,7 @@ const Sidebar = ({ isMobile, closeSidebar, expanded: expandedProp, setExpanded: 
                         </div>
                     </div>
                 )}
-                <div className="p-4 border-t border-gray-700 text-xs text-gray-400">
+                <div className="p-4   text-xs text-gray-400">
             {expanded ? "" : ""}
                 </div>
             </div>

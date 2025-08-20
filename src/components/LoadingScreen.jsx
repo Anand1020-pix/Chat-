@@ -39,6 +39,7 @@ const LoadingScreen = ({ title = "Chat" }) => {
           ref={headingRef}
           className="text-4xl md:text-5xl font-bold text-white mb-3"
           aria-live="polite"
+          style={{ fontFamily: '"Qwitcher Grypen", "Brush Script MT", cursive' }}
         >
           {title}
         </h1>
