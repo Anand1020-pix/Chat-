@@ -29,6 +29,9 @@ const TopBar = ({ toggleSidebar, toggleExpand, sidebarExpanded }) => {
                     <Title />
                 )}
             </div>
+            <div className="hidden md:block p-2 font-semibold text-gray-400 text-sm opacity-20 hover:cursor-pointer" onClick={() => window.open("https://github.com/Anand1020-pix", "_blank")}>
+              github.com/Anand1020-pix
+            </div>
         </div>
     );
 }

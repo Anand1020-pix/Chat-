@@ -1,13 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import gsap from "gsap";
 
-// ScrambleText (default export) — reveals `title` with a GSAP-driven scramble animation.
-// Props:
-// - title: string to reveal
-// - duration: animation length in seconds (default 1.6)
-// - loop: boolean, if true repeats the scramble repeatedly (default false)
-// - className/style: passed to the h1
-const ScrambleText = ({ title = "Chat", duration = 1.6, loop = false, className = "text-4xl font-bold", style = {} }) => {
+const ScrambleText = ({ title = "Chat", duration = 1.6, loop = false, className = "text-6xl font-bold", style = {} }) => {
   const elRef = useRef(null);
   const tweenRef = useRef(null);
 

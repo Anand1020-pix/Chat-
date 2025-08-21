@@ -45,7 +45,6 @@ const MainLayout = () => {
         />
         <main className="flex-grow p-4 overflow-y-auto">{routes}</main>
       </div>
-
       {/* Mobile Sidebar */}
       <div
         className={`fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden ${
