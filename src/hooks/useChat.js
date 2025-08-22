@@ -44,19 +44,30 @@ const useChat = (initialMessages = [], activeConversation = null) => {
 
         let forceNew = false;
         try {
-            // If no activeConversation provided, or it's an intentionally blank/new conv (no title/_id and empty messages), force new
+            // If no activeConversation provided, or it's an intentionally blank/new conv (no title and no id and empty messages), force new
+            const hasAnyId = activeConversation && (activeConversation._id || activeConversation.uniqueId || activeConversation.id);
             if (!activeConversation) forceNew = true;
-            else if (!activeConversation._id && !(activeConversation.title) && Array.isArray(activeConversation.messages) && activeConversation.messages.length === 0) forceNew = true;
+            else if (!hasAnyId && !(activeConversation.title) && Array.isArray(activeConversation.messages) && activeConversation.messages.length === 0) forceNew = true;
 
             if (activeConversation) {
                 if (activeConversation.title) savePayload.title = activeConversation.title;
-                if (activeConversation._id) savePayload.uniqueId = activeConversation._id;
+                // prefer any known id field when setting uniqueId
+                if (hasAnyId) savePayload.uniqueId = activeConversation._id || activeConversation.uniqueId || activeConversation.id;
             }
         } catch (e) {
             // ignore
         }
 
-        saveConversation({ ...savePayload, forceNew }).catch((error) => {
+        // attach the active conversation id when available so server can append messages
+        const callPayload = { ...savePayload, forceNew };
+        try {
+            const hasAnyId = activeConversation && (activeConversation._id || activeConversation.uniqueId || activeConversation.id);
+            if (hasAnyId) callPayload.uniqueId = activeConversation._id || activeConversation.uniqueId || activeConversation.id;
+        } catch (e) {
+            // ignore
+        }
+
+        saveConversation(callPayload).catch((error) => {
             // log but don't interrupt the user flow
             console.error("Failed to save conversation:", error);
         });

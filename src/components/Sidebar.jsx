@@ -68,15 +68,21 @@ const Sidebar = ({ isMobile, closeSidebar, expanded: expandedProp, setExpanded: 
                     const title = item.title || item.name || "Untitled";
                     const messages = Array.isArray(item.messages)
                         ? item.messages
-                        : item.lastMessage
-                            ? [
-                                {
-                                    userPrompt: item.lastMessage.userPrompt || item.lastMessage.user,
-                                    botResponse: item.lastMessage.botResponse || item.lastMessage.bot,
-                                    timestamp: item.lastMessage.timestamp,
-                                },
-                            ]
-                            : [];
+                        : Array.isArray(item.lastMessages)
+                            ? item.lastMessages.map((m) => ({
+                                userPrompt: m.userPrompt || m.user || "",
+                                botResponse: m.botResponse || m.bot || "",
+                                timestamp: m.timestamp,
+                            }))
+                            : item.lastMessage
+                                ? [
+                                    {
+                                        userPrompt: item.lastMessage.userPrompt || item.lastMessage.user,
+                                        botResponse: item.lastMessage.botResponse || item.lastMessage.bot,
+                                        timestamp: item.lastMessage.timestamp,
+                                    },
+                                ]
+                                : [];
                     return {
                         _id: id,
                         uniqueId: id,
@@ -122,15 +128,21 @@ const Sidebar = ({ isMobile, closeSidebar, expanded: expandedProp, setExpanded: 
                     const title = item.title || item.name || "Untitled";
                     const messages = Array.isArray(item.messages)
                         ? item.messages
-                        : item.lastMessage
-                            ? [
-                                {
-                                    userPrompt: item.lastMessage.userPrompt || item.lastMessage.user,
-                                    botResponse: item.lastMessage.botResponse || item.lastMessage.bot,
-                                    timestamp: item.lastMessage.timestamp,
-                                },
-                            ]
-                            : [];
+                        : Array.isArray(item.lastMessages)
+                            ? item.lastMessages.map((m) => ({
+                                userPrompt: m.userPrompt || m.user || "",
+                                botResponse: m.botResponse || m.bot || "",
+                                timestamp: m.timestamp,
+                            }))
+                            : item.lastMessage
+                                ? [
+                                    {
+                                        userPrompt: item.lastMessage.userPrompt || item.lastMessage.user,
+                                        botResponse: item.lastMessage.botResponse || item.lastMessage.bot,
+                                        timestamp: item.lastMessage.timestamp,
+                                    },
+                                ]
+                                : [];
                     return {
                         _id: id,
                         uniqueId: id,

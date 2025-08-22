@@ -67,7 +67,7 @@ function deriveTitle(prompt) {
     return candidate.slice(0, 60);
 }
 
-async function saveConversation({ title, userPrompt, botResponse, forceNew = false } = {}) {
+async function saveConversation({ title, userPrompt, botResponse, uniqueId, forceNew = false } = {}) {
     const finalTitle = title || deriveTitle(userPrompt);
     const payload = {
         title: finalTitle,
@@ -75,16 +75,22 @@ async function saveConversation({ title, userPrompt, botResponse, forceNew = fal
         botResponse: botResponse || "",
     };
 
+    // If caller provided a uniqueId and this is not a forced new conversation, include it in the payload
+    if (!forceNew && uniqueId) {
+        payload.uniqueId = uniqueId;
+    }
+
     // If caller explicitly requests a new conversation (forceNew), don't attach an existing id.
     if (!forceNew) {
         // If caller already provided a uniqueId (e.g. caller knows the active conversation), keep it.
         if (!payload.uniqueId) {
             try {
                 const list = loadCacheFromStorage() || [];
-                // Find an existing conversation by exact title match and attach its _id.
+                // Find an existing conversation by exact title match and attach its id (prefer server _id but accept uniqueId/id)
                 const existing = list.find((c) => c && c.title && c.title === finalTitle);
-                if (existing && existing._id) {
-                    payload.uniqueId = existing._id;
+                if (existing) {
+                    const existingId = existing._id || existing.uniqueId || existing.id;
+                    if (existingId) payload.uniqueId = existingId;
                 }
             } catch (e) {
                 // ignore cache lookup errors and proceed without uniqueId
@@ -163,7 +169,6 @@ export async function fetchConversationById(id) {
             // try next
         }
     }
-    // If GET didn't return a full conversation, try POST variants to conv_url and save_url
     if (!data) {
         const postTargets = [conv_url];
         if (typeof save_url !== 'undefined' && save_url) postTargets.push(save_url);
@@ -175,7 +180,8 @@ export async function fetchConversationById(id) {
         for (const target of postTargets) {
             for (const body of postBodies) {
                 try {
-                    const res = await fetch(target, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+                    const res = await fetch(target, { method: "POST", headers: { "Content-Type": "application/json" },
+                         body: JSON.stringify(body) });
                     if (!res.ok) continue;
                     data = await res.json().catch(() => null);
                     if (data) break;
@@ -192,15 +198,21 @@ export async function fetchConversationById(id) {
     const title = item.title || item.name || "Untitled";
     const messages = Array.isArray(item.messages)
         ? item.messages
-        : item.lastMessage
-            ? [
-                {
-                    userPrompt: item.lastMessage.userPrompt || item.lastMessage.user,
-                    botResponse: item.lastMessage.botResponse || item.lastMessage.bot,
-                    timestamp: item.lastMessage.timestamp,
-                },
-            ]
-            : [];
+        : Array.isArray(item.lastMessages)
+            ? item.lastMessages.map((m) => ({
+                userPrompt: m.userPrompt || m.user || "",
+                botResponse: m.botResponse || m.bot || "",
+                timestamp: m.timestamp,
+            }))
+            : item.lastMessage
+                ? [
+                    {
+                        userPrompt: item.lastMessage.userPrompt || item.lastMessage.user,
+                        botResponse: item.lastMessage.botResponse || item.lastMessage.bot,
+                        timestamp: item.lastMessage.timestamp,
+                    },
+                ]
+                : [];
     return {
         _id: idv,
         uniqueId: idv,
